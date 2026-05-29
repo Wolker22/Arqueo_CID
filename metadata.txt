@@ -1,29 +1,28 @@
 [general]
-name=Arqueo Cid
+name=Arqueo CID
 description=Plataforma de teledetección LiDAR para arqueología – Preprocesado (Tizona) y Postprocesado IA (Colada)
 about=Plugin para QGIS que integra la descarga y procesamiento de datos LiDAR del PNOA (Tizona) con un sistema de inteligencia artificial para la detección de anomalías arqueológicas (Colada). Desarrollado por David Peña Fernández en la Universidad de Córdoba.
-
 version=1.0.0
 qgisMinimumVersion=3.22
 qgisMaximumVersion=3.99
 author=David Peña Fernández
 email=david.pena@uco.es
 
-repository=https://github.com/dpena/arqueo_cid
-homepage=https://github.com/dpena/arqueo_cid
-tracker=https://github.com/dpena/arqueo_cid/issues
+repository=https://github.com/Wolker22/Arqueo_CID
+homepage=https://github.com/Wolker22/Arqueo_CID
+tracker=https://github.com/Wolker22/Arqueo_CID/issues
 
 icon=resources/icons/cid.png
 experimental=0
 deprecated=0
-tags=python,lidar,pnoa,mdt,derivados,deep learning,arqueologia,qgis
+tags=python, lidar, pnoa, mdt, derivados, deep learning, arqueologia, qgis
 
 category=Raster
 hasProcessingProvider=no
 server=no
 
 # Dependencias Python obligatorias (se instalan automáticamente si se usa el repositorio de QGIS)
-# Nota: Algunas dependencias (torch, gdal) pueden requerir instalación manual por tamaño/compatibilidad.
+# Nota: GDAL y PyTorch con CUDA pueden requerir instalación manual por tamaño/compatibilidad.
 pythonDependencies=torch>=2.0.0;numpy>=1.24.0;scipy>=1.10.0;rasterio>=1.3;laspy>=2.0;pillow>=9.0;requests>=2.28;beautifulsoup4>=4.11;scikit-image>=0.19;pytorch-msssim;scikit-learn>=1.1;psutil>=5.9
 
 pythonMin=3.9
