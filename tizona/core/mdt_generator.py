@@ -60,17 +60,9 @@ class MDTGenerator:
     """
     Genera un MDT de alta calidad a partir de nubes LiDAR, filtrando suelo
     y aplicando interpolación avanzada para evitar artefactos de TIN y ghosting.
-
-    Attributes:
-        proc: Instancia de ProcesadorLiDAR (proporciona configuración y callbacks).
-        temp_files: Lista de archivos temporales para limpieza.
     """
 
     def __init__(self, procesador: 'ProcesadorLiDAR') -> None:
-        """
-        Args:
-            procesador: Instancia de ProcesadorLiDAR con parámetros de procesamiento.
-        """
         self.proc = procesador
         self.temp_files: List[str] = []
 
@@ -79,16 +71,6 @@ class MDTGenerator:
     # ------------------------------------------------------------------
 
     def _ejecutar_pipeline(self, pipeline: List[Any], timeout: int = PDAL_TIMEOUT) -> bool:
-        """
-        Ejecuta un pipeline PDAL y devuelve True si tiene éxito.
-
-        Args:
-            pipeline: Lista de etapas del pipeline PDAL (formato JSON).
-            timeout: Tiempo máximo de espera en segundos.
-
-        Returns:
-            True si la ejecución fue exitosa, False en caso contrario.
-        """
         try:
             subprocess.run(
                 ["pdal", "pipeline", "--stdin"],
@@ -116,17 +98,6 @@ class MDTGenerator:
         algoritmo: str,
         smrf_params: Dict[str, Any]
     ) -> Optional[str]:
-        """
-        Extrae Clase 2 y opcionalmente aplica SMRF/CSF. Retorna ruta temporal .laz.
-
-        Args:
-            ruta_laz: Ruta al archivo LAZ original.
-            algoritmo: 'smrf', 'csf' o 'none'.
-            smrf_params: Diccionario con parámetros del filtro.
-
-        Returns:
-            Ruta al archivo LAZ filtrado, o None si falló.
-        """
         tmpfile = tempfile.mkstemp(suffix=".laz", prefix="suelo_")
         os.close(tmpfile[0])
         path = tmpfile[1]
@@ -164,17 +135,6 @@ class MDTGenerator:
         algoritmo: str,
         smrf_params: Dict[str, Any]
     ) -> Optional[str]:
-        """
-        Aplica SMRF/CSF sobre la nube completa y extrae Clase 2. Retorna ruta temporal .laz.
-
-        Args:
-            ruta_laz: Ruta al archivo LAZ original.
-            algoritmo: 'smrf', 'csf' o 'none'.
-            smrf_params: Diccionario con parámetros del filtro.
-
-        Returns:
-            Ruta al archivo LAZ filtrado, o la original si algoritmo='none', o None si falló.
-        """
         if algoritmo == "none":
             return ruta_laz
         tmpfile = tempfile.mkstemp(suffix=".laz", prefix="suelo_directo_")
@@ -210,53 +170,23 @@ class MDTGenerator:
             return None
 
     # ------------------------------------------------------------------
-    # Acceso compatible a arrays de laspy (laspy >= 2.0)
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _get_xyz_classification(las_reader: laspy.LasReader) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Devuelve x, y, z, classification del lector LAS/LAZ abierto.
-        Compatible con laspy >= 2.0 y versiones anteriores.
-
-        Args:
-            las_reader: Lector LAS/LAZ abierto.
-
-        Returns:
-            Tupla (x, y, z, classification) como arrays numpy.
-        """
-        try:
-            # Forma moderna (laspy >= 2.0)
-            x = np.array(las_reader.x)
-            y = np.array(las_reader.y)
-            z = np.array(las_reader.z)
-            classification = np.array(las_reader.classification)
-        except AttributeError:
-            # Fallback para versiones antiguas
-            pts = las_reader.points
-            x = np.array(pts.x)
-            y = np.array(pts.y)
-            z = np.array(pts.z)
-            classification = np.array(pts.classification)
-        return x, y, z, classification
-
-    # ------------------------------------------------------------------
-    # Extracción de puntos de suelo con laspy
+    # Extracción de puntos de suelo con laspy (sin función auxiliar)
     # ------------------------------------------------------------------
 
     def _extraer_suelo_laspy(self, ruta_laz: str) -> Optional[str]:
         """
         Extrae puntos de Clase 2 del LAZ usando laspy y los guarda en CSV.
-
-        Args:
-            ruta_laz: Ruta al archivo LAZ.
-
-        Returns:
-            Ruta al archivo CSV con puntos de suelo, o None si no se pudo.
+        Se lee el archivo completo con f.read() para acceder a los arrays.
         """
         try:
             with laspy.open(ruta_laz) as f:
-                x, y, z, cls = self._get_xyz_classification(f)
+                # Leer todos los puntos (carga completa en RAM)
+                las_data = f.read()
+                x = las_data.x
+                y = las_data.y
+                z = las_data.z
+                cls = las_data.classification
+
             mask = cls == 2
             if mask.sum() < MIN_PUNTOS_SUELO:
                 logger.warning(
@@ -294,21 +224,6 @@ class MDTGenerator:
         ruta_mdt: str,
         method: str = GDAL_GRID_METHOD,
     ) -> bool:
-        """
-        Interpola con GDAL Grid usando el método configurado.
-
-        Args:
-            puntos_csv: Ruta al archivo CSV con puntos (X, Y, Z).
-            xmin, ymax: Coordenadas mínima X y máxima Y del área.
-            cols, rows: Dimensiones del ráster en píxeles.
-            res: Resolución espacial.
-            crs: Sistema de coordenadas.
-            ruta_mdt: Ruta de salida del GeoTIFF.
-            method: 'linear' (más suave) o 'invdist' (ponderación inversa).
-
-        Returns:
-            True si la interpolación fue exitosa, False en caso contrario.
-        """
         try:
             from osgeo import gdal
 
@@ -329,7 +244,7 @@ class MDTGenerator:
                     zfield="Z",
                     lco=GDAL_GRID_COMPRESSION_OPTS,
                 )
-            else:  # invdist (fallback o configurado)
+            else:
                 radius1 = res * GDAL_GRID_RADIUS1_FACTOR
                 radius2 = res * GDAL_GRID_RADIUS2_FACTOR
                 options = gdal.GridOptions(
@@ -363,16 +278,6 @@ class MDTGenerator:
     # ------------------------------------------------------------------
 
     def _generar_mdt_pdal(self, laz_suelo: str, ruta_mdt: str) -> bool:
-        """
-        Usa PDAL writers.gdal para generar el MDT.
-
-        Args:
-            laz_suelo: Ruta al archivo LAZ con puntos de suelo.
-            ruta_mdt: Ruta de salida del GeoTIFF.
-
-        Returns:
-            True si la generación fue exitosa, False en caso contrario.
-        """
         pipeline = [laz_suelo]
         if self.proc.pdal_decimation_step > 1:
             pipeline.append(
@@ -406,19 +311,12 @@ class MDTGenerator:
         transform: rasterio.Affine,
         crs: CRS,
     ) -> None:
-        """
-        Interpolación Python del MDT con métodos elásticos:
-        1. Thin Plate Spline (RBF) si scipy >= 1.7.
-        2. IDW con pesos gaussianos (k vecinos) como alternativa.
-
-        Args:
-            fuente: Ruta al archivo LAZ de entrada.
-            ruta_mdt: Ruta de salida del GeoTIFF.
-            xmin, ymax, cols, rows, transform, crs: Parámetros geoespaciales.
-        """
         logger.info("Interpolación Python del MDT (método orgánico).")
         with laspy.open(fuente) as f:
-            x, y, z, _ = self._get_xyz_classification(f)
+            las_data = f.read()
+            x = las_data.x
+            y = las_data.y
+            z = las_data.z
 
         # Crear malla destino
         mdt = np.full((rows, cols), np.nan, dtype=np.float32)
@@ -442,7 +340,6 @@ class MDTGenerator:
             z_src = z[idx_sample]
 
             rbf = RBFInterpolator(pts_src, z_src, kernel=RBF_KERNEL)
-            # Procesar por bloques para evitar picos de memoria
             for i in range(0, len(puntos_destino), RBF_BLOCK_SIZE):
                 chunk = puntos_destino[i : i + RBF_BLOCK_SIZE]
                 mdt.flat[i : i + RBF_BLOCK_SIZE] = rbf(chunk)
@@ -450,7 +347,6 @@ class MDTGenerator:
             logger.info("MDT interpolado con Thin Plate Spline (RBF).")
         except Exception as e:
             logger.warning(f"RBF no disponible o falló ({e}). Usando IDW gaussiano.")
-            # IDW con pesos gaussianos
             tree = cKDTree(np.column_stack((x, y)))
             dist, idx = tree.query(
                 puntos_destino,
@@ -465,11 +361,9 @@ class MDTGenerator:
                     w /= np.sum(w)
                     mdt.flat[i] = np.sum(z[idx[i][valid]] * w)
 
-        # Rellenar huecos residuales
         if np.any(np.isnan(mdt)):
             self._rellenar_nan(mdt)
 
-        # Guardar con perfil unificado
         perfil = perfil_derivado(crs, transform, rows, cols, np.float32)
         with rasterio.open(ruta_mdt, "w", **perfil) as dst:
             dst.write(mdt.astype(np.float32), 1)
@@ -480,15 +374,6 @@ class MDTGenerator:
     # ------------------------------------------------------------------
 
     def _obtener_crs(self, ruta_laz: str) -> CRS:
-        """
-        Determina el CRS del archivo LAZ. Si no se puede, asume UTM según la ubicación.
-
-        Args:
-            ruta_laz: Ruta al archivo LAZ.
-
-        Returns:
-            CRS (sistema de coordenadas).
-        """
         crs = None
         try:
             with laspy.open(ruta_laz) as f:
@@ -503,18 +388,16 @@ class MDTGenerator:
             pass
 
         if crs is None:
-            # Fallback: estimar UTM según longitud (xmin)
             with laspy.open(ruta_laz) as f:
                 xmin = f.header.x_min
-            # Husos UTM: 28 para Canarias, 29 para Galicia/Portugal, 30 para España peninsular
             if -19 < xmin < -13:
-                crs = CRS.from_epsg(32628)  # UTM 28N
+                crs = CRS.from_epsg(32628)
             elif -13 < xmin < -7:
-                crs = CRS.from_epsg(32629)  # UTM 29N
+                crs = CRS.from_epsg(32629)
             elif -7 < xmin < -1:
-                crs = CRS.from_epsg(32630)  # UTM 30N
+                crs = CRS.from_epsg(32630)
             else:
-                crs = CRS.from_epsg(25830)  # ETRS89 / UTM 30N (península)
+                crs = CRS.from_epsg(25830)
             logger.warning(f"CRS no encontrado, usando fallback: {crs}")
         return crs
 
@@ -523,12 +406,6 @@ class MDTGenerator:
     # ------------------------------------------------------------------
 
     def _obtener_fuente_suelo(self) -> Tuple[str, bool, CRS, float, float, float, float]:
-        """
-        Busca obtener puntos de suelo (Clase 2) usando PDAL, laspy, o la nube completa.
-
-        Returns:
-            (ruta_fuente, es_csv, crs, xmin, ymin, xmax, ymax)
-        """
         ruta_laz = self.proc.ruta_laz
 
         # 1. Intentar con PDAL
@@ -593,23 +470,7 @@ class MDTGenerator:
     # ------------------------------------------------------------------
 
     def generar_mdt(self) -> Tuple[str, np.ndarray, rasterio.Affine, CRS]:
-        """
-        Genera el MDT final:
-        1. Filtra suelo.
-        2. Rasteriza con GDAL Grid, PDAL o fallback Python.
-        3. Rellena huecos, suaviza (gaussiano + bilateral opcional).
-        4. Guarda con perfil unificado.
-
-        Returns:
-            (ruta_mdt, mdt_array, transform, crs)
-
-        Raises:
-            RuntimeError: Si no se puede generar el MDT por ningún método.
-            ValueError: Si el archivo de entrada no es .laz/.las.
-        """
-        ruta_mdt = os.path.join(
-            self.proc.carpeta_mdt, f"{self.proc.nombre_base}_MDT.tif"
-        )
+        ruta_mdt = os.path.join(self.proc.carpeta_mdt, f"{self.proc.nombre_base}_MDT.tif")
         if os.path.exists(ruta_mdt):
             logger.info(f"Cargando MDT existente: {ruta_mdt}")
             with rasterio.open(ruta_mdt) as src:
@@ -620,11 +481,8 @@ class MDTGenerator:
             mdt = self._rellenar_nan(mdt)
             return ruta_mdt, mdt, transform, crs
 
-        # Validar formato de entrada
         if not self.proc.ruta_laz.lower().endswith((".laz", ".las")):
-            raise ValueError(
-                f"El archivo de entrada debe ser .laz/.las, no '{self.proc.ruta_laz}'"
-            )
+            raise ValueError(f"El archivo de entrada debe ser .laz/.las, no '{self.proc.ruta_laz}'")
 
         fuente, es_csv, crs, xmin, ymin, xmax, ymax = self._obtener_fuente_suelo()
         self.proc.crs = crs
@@ -634,61 +492,51 @@ class MDTGenerator:
         rows = int(np.ceil((ymax - ymin) / res))
         transform = from_origin(xmin, ymax, res, res)
 
-        # Rasterizar según el tipo de fuente
         exito = False
         metodo_interp = getattr(self.proc, "interpolation_method", INTERPOLATION_METHOD)
+
+        # Caso CSV: intentar GDAL Grid
         if es_csv:
             exito = self._rasterizar_con_gdal_grid(
-                fuente,
-                xmin,
-                ymax,
-                cols,
-                rows,
-                res,
-                crs,
-                ruta_mdt,
-                method=metodo_interp,
+                fuente, xmin, ymax, cols, rows, res, crs, ruta_mdt, method=metodo_interp
             )
             if not exito:
-                raise RuntimeError("Fallo GDAL Grid con CSV de suelo.")
-        else:
+                logger.warning("Fallo GDAL Grid con CSV. Reintentando con PDAL o fallback usando nube original.")
+                # Cambiar al archivo LAZ original
+                fuente = self.proc.ruta_laz
+                es_csv = False
+
+        # Si no es CSV (nube original) o falló el intento con CSV, usar PDAL o fallback
+        if not es_csv:
             if self.proc.usar_pdal:
                 exito = self._generar_mdt_pdal(fuente, ruta_mdt)
             if not exito:
-                self._generar_mdt_fallback(
-                    fuente, ruta_mdt, xmin, ymax, cols, rows, transform, crs
-                )
+                self._generar_mdt_fallback(fuente, ruta_mdt, xmin, ymax, cols, rows, transform, crs)
                 exito = True
 
         if not exito:
             raise RuntimeError("No se pudo generar el MDT por ningún método.")
 
-        # Leer el MDT recién creado
         with rasterio.open(ruta_mdt) as src:
             mdt = src.read(1, masked=True)
             mdt = np.where(mdt.mask, np.nan, mdt.data.astype(np.float32))
             transform = src.transform
         self.proc.transform = transform
 
-        # Rellenar NaN residuales
         mdt = self._rellenar_nan(mdt)
 
-        # Suavizado gaussiano (configurable)
         if self.proc.gaussian_blur_sigma > 0:
             try:
                 from scipy.ndimage import gaussian_filter
-
                 sigma_px = self.proc.gaussian_blur_sigma / self.proc.res
                 mdt = gaussian_filter(mdt, sigma=sigma_px, mode="nearest")
                 logger.info(f"Suavizado gaussiano aplicado (sigma={sigma_px:.2f} px)")
             except ImportError:
                 logger.warning("SciPy no disponible, suavizado gaussiano omitido.")
 
-        # Filtro bilateral opcional (preserva bordes)
         if getattr(self.proc, "aplicar_filtro_bilateral", False):
             try:
                 from skimage.restoration import denoise_bilateral
-
                 mdt = denoise_bilateral(
                     mdt,
                     sigma_color=BILATERAL_SIGMA_COLOR,
@@ -699,15 +547,7 @@ class MDTGenerator:
             except ImportError:
                 logger.warning("scikit-image no disponible, omitiendo filtro bilateral.")
 
-        # Guardar MDT final con perfil unificado
-        perfil = perfil_derivado(
-            crs,
-            transform,
-            mdt.shape[0],
-            mdt.shape[1],
-            np.float32,
-            nodata=-9999.0,
-        )
+        perfil = perfil_derivado(crs, transform, mdt.shape[0], mdt.shape[1], np.float32, nodata=-9999.0)
         with rasterio.open(ruta_mdt, "w", **perfil) as dst:
             dst.write(np.where(np.isnan(mdt), -9999.0, mdt).astype(np.float32), 1)
 
@@ -719,20 +559,10 @@ class MDTGenerator:
     # ------------------------------------------------------------------
 
     def _rellenar_nan(self, mdt: np.ndarray) -> np.ndarray:
-        """
-        Rellena los píxeles NaN con interpolación de vecinos más cercanos.
-
-        Args:
-            mdt: Array del MDT (puede contener NaN).
-
-        Returns:
-            MDT sin NaN.
-        """
         if not np.any(np.isnan(mdt)):
             return mdt
         try:
             from scipy.interpolate import NearestNDInterpolator
-
             nan_mask = np.isnan(mdt)
             coords = np.argwhere(~nan_mask)
             values = mdt[~nan_mask]
@@ -741,7 +571,6 @@ class MDTGenerator:
                 np.argwhere(nan_mask)[:, 0], np.argwhere(nan_mask)[:, 1]
             )
         except ImportError:
-            # Fallback: usar la media si no hay SciPy
             mdt[np.isnan(mdt)] = np.nanmean(mdt)
         return mdt
 
@@ -750,7 +579,6 @@ class MDTGenerator:
     # ------------------------------------------------------------------
 
     def cleanup(self) -> None:
-        """Elimina todos los archivos temporales creados."""
         for f in self.temp_files:
             try:
                 if os.path.exists(f):
