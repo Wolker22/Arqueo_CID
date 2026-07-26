@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Plugin paraguas Arqueo Cid para QGIS.
 ======================================
@@ -16,24 +15,27 @@ Arqueo Cid y elegir cobertura. La vista se centra automáticamente en España.
 """
 
 import os
-from typing import List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from qgis.core import (
-    QgsProject,
-    QgsSettings,
-    QgsRectangle,
+    QgsApplication,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
+    QgsProject,
+    QgsRectangle,
     QgsRasterLayer,
-    QgsApplication,
+    QgsSettings,
 )
-from qgis.PyQt.QtWidgets import QAction, QMessageBox
-from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QTimer
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QAction, QMessageBox
 
 # Submódulos
-from .tizona.main import TizonaPlugin
 from .colada.main import ColadaPlugin
+from .tizona.main import TizonaPlugin
+
+if TYPE_CHECKING:
+    from qgis.utils import QgisInterface
 
 # Componentes propios del paraguas
 from .gui.dialogoCobertura import DialogoCobertura
@@ -71,25 +73,25 @@ class ArqueoCidPlugin:
             iface: Interfaz de QGIS.
         """
         self.iface = iface
-        self.actions: List[QAction] = []
+        self.actions: list[QAction] = []
         self.menu = 'Arqueo Cid'
         self._cobertura_actual = 'todas'
 
         # Instanciar submódulos de forma segura
         try:
             self.tizona = TizonaPlugin(iface)
-        except Exception as e:
-            logger.error(f"Error al iniciar Tizona: {e}")
+        except Exception:
+            logger.exception("Error al iniciar Tizona")
             self.tizona = None
 
         try:
             self.colada = ColadaPlugin(iface)
-        except Exception as e:
-            logger.error(f"Error al iniciar Colada: {e}")
+        except Exception:
+            logger.exception("Error al iniciar Colada")
             self.colada = None
 
         # Callback para abrir Colada desde el diálogo de progreso de Tizona
-        def _abrir_colada_desde_tizona(ruta_resultados: str, nombres_teselas: Optional[List[str]] = None) -> None:
+        def _abrir_colada_desde_tizona(ruta_resultados: str, nombres_teselas: Optional[list[str]] = None) -> None:
             if self.colada:
                 QTimer.singleShot(150, lambda: self.colada.run_colada(
                     ruta_inicial=ruta_resultados,

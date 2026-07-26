@@ -1,0 +1,6 @@
+pyproject.toml
+arqueo_cid.egg-info/PKG-INFO
+arqueo_cid.egg-info/SOURCES.txt
+arqueo_cid.egg-info/dependency_links.txt
+arqueo_cid.egg-info/requires.txt
+arqueo_cid.egg-info/top_level.txt
