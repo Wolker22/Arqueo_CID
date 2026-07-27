@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Configuración global del plugin Arqueo-CID v1.0
 ================================================
@@ -11,9 +10,10 @@ Este archivo NO contiene código de comprobación de dependencias.
 Dichas comprobaciones residen en `utils/entorno.py`.
 """
 
-import os
 import multiprocessing
-from typing import Dict, List, Union, Any
+import os
+from typing import Any, Union
+
 from qgis.core import QgsApplication
 
 # ============================================================================
@@ -27,14 +27,17 @@ LOG_LEVEL = 'INFO'
 LOG_FORMATO = '%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s'
 LOG_FORMATO_FECHA = '%Y-%m-%d %H:%M:%S'
 ROOT_LOGGER_NAME = "ArqueoCid"
+NOMBRE_PLUGIN = "Arqueo Cid"
+NOMBRE_PREPROCESAR = "TIZONA"
+NOMBRE_POSTPROCESAR = "COLADA"
 
 # Configuración de logging por módulo
 # Cada entrada define: archivo de log, nivel de consola y nivel para el panel de QGIS
-LOGGING_MODULE_CONFIG: Dict[str, Dict[str, Any]] = {
+LOGGING_MODULE_CONFIG: dict[str, dict[str, Any]] = {
     'Tizona': {
         'log_file': 'tizona.log',
-        'console_level': 30,      # logging.WARNING
-        'qgis_level': 20,         # logging.INFO
+        'console_level': 30,
+        'qgis_level': 20,
     },
     'Colada': {
         'log_file': 'colada.log',
@@ -56,21 +59,25 @@ VERSION_PLUGIN = "1.0.0"
 NOMBRE_CAMPO_TESELA = "FICHERO"
 
 # ============================================================================
-# 2. COLORES CORPORATIVOS
+# 2. COLORES CORPORATIVOS (Paleta UCO - Universidad de Córdoba)
 # ============================================================================
+# Colores extraídos del logotipo oficial (Azul añil, Rojo granate, Amarillo)
 
-COLOR_PRIMARIO = "#006666"
-COLOR_PRIMARIO_OSC = "#004D4D"
-COLOR_BORDE = "#E6E6E6"
-COLOR_SUPERFICIE = "#F2F2F2"
-COLOR_FONDO = "#FFFFFF"
-COLOR_TEXTO_PRIMARIO = "#333333"
+# -- Fondos, Textos y Bordes --
+COLOR_FONDO = "#FFFFFF"         # Fondo general de las ventanas
+COLOR_TEXTO = "#333333"         # Texto estándar (leíble)
+COLOR_BORDE = "#CCCCCC"         # Bordes de QLineEdit y separadores
 
-COLADA_COLOR_PRIMARIO = "#F28066"
-COLADA_COLOR_PRIMARIO_OSC = "#E57359"
-COLADA_COLOR_FONDO = "#FFFFFF"
-COLADA_COLOR_SUPERFICIE = "#F2F2F2"
-COLADA_COLOR_BORDE = "#E0E0E0"
+# -- Acción Principal (Aceptar, Buscar, Títulos) --
+COLOR_PRIMARIO = "#2C265C"      # Azul UCO
+COLOR_PRIMARIO_HOVER = "#1A1638" # Azul UCO más oscuro (para cuando pasas el ratón)
+
+# -- Acción Secundaria / Negativa (Cancelar, Borrar) --
+COLOR_SECUNDARIO = "#A61B2B"    # Rojo UCO
+COLOR_SECUNDARIO_HOVER = "#7A141F" # Rojo UCO más oscuro (para cuando pasas el ratón)
+
+# -- Detalles y Avisos (Opcional) --
+COLOR_ACENTO = "#F2A900"        # Amarillo UCO (útil para resaltar elementos o advertencias)
 
 # ============================================================================
 # 3. RECURSOS DEL SISTEMA (CPU, MEMORIA)
@@ -115,7 +122,7 @@ RETRY_STATUS_FORCELIST = [500, 502, 503, 504]
 POOL_CONNECTIONS = 10
 POOL_MAXSIZE = 10
 
-COBERTURA_A_URL_PRODUCTO: Dict[Union[int, str], str] = {
+COBERTURA_A_URL_PRODUCTO: dict[Union[int, str], str] = {
     1: 'lidar-primera-cobertura',
     2: 'lidar-segunda-cobertura',
     3: 'lidar-tercera-cobertura',
@@ -151,7 +158,7 @@ DERIVADOS_POR_DEFECTO = [
     'tpi', 'ridge_valley', 'mrvbf', 'aspect_sin', 'aspect_cos'
 ]
 
-DERIVADOS_DESCRIPCIONES: Dict[str, str] = {
+DERIVADOS_DESCRIPCIONES: dict[str, str] = {
     'hillshade': 'Sombreado del relieve clásico/multidireccional.',
     'slope': 'Pendiente en grados.',
     'aspect_sin': 'Seno de la orientación (componente N‑S).',
@@ -169,7 +176,7 @@ DERIVADOS_DESCRIPCIONES: Dict[str, str] = {
     'mrvbf': 'Índice multiescala de planitud de fondos de valle (MRVBF).'
 }
 
-DERIVADOS_CATEGORIAS: Dict[str, List[str]] = {
+DERIVADOS_CATEGORIAS: dict[str, list[str]] = {
     "Básicos y Relieve": ['hillshade', 'slope'],
     "Curvaturas": ['curvature', 'curvature_vert', 'curvature_horiz'],
     "Posición Topográfica": ['tpi', 'lrm', 'ridge_valley'],
@@ -389,15 +396,50 @@ ESTILO_TESELAS = {
     "outline_width": "0.5",
     "outline_style": "solid",
 }
-MAPTIP_CAMPO_PREFERIDO = "FICHERO"
-MAPTIP_CAMPOS_ALTERNOS = ["fichero", "HOJA", "hoja", "Name", "NAME"]
-MAPTIP_HTML_TEMPLATE = """
-<div style="background-color: rgba(30, 30, 30, 0.9); color: white; padding: 6px 10px; border-radius: 5px; font-family: Arial, sans-serif; font-size: 14px; border: 1px solid #555;">
-    <b>📦 Tesela:</b> [% "{}" %]
+
+# 1. UNIFICADO: Lista única de campos ordenada por prioridad (el primero manda)
+CAMPOS_MAPTIP = ["FICHERO", "fichero", "HOJA", "hoja", "Name", "NAME"]
+
+# 2. ESTILO EXTRAÍDO: Para que sea muy fácil cambiar colores, bordes o fuentes
+ESTILO_MAPTIP_CONTENEDOR = (
+    "background-color: rgba(40, 44, 52, 0.95);"
+    "padding: 8px 12px;"
+    "border-radius: 6px;"
+    "font-family: 'Segoe UI', Arial, sans-serif;"
+    "font-size: 13px;"
+    "border: 1px solid #3e4451;"
+    "box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);"
+    "display: flex;"
+    "align-items: center;"
+)
+
+# 3. HTML LIMPIO: Usa el estilo de arriba y diferencia colores (f-string)
+# Nota: Usamos {{}} para que Python lo deje como {} listo para usar con .format()
+MAPTIP_HTML_TEMPLATE = f"""
+<div style="{ESTILO_MAPTIP_CONTENEDOR}">
+    <span style="font-size: 15px; margin-right: 6px;"></span>
+    <strong style="color: #abb2bf; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">Tesela:</strong>
+    <span style="color: #98c379; margin-left: 6px; font-weight: 600; font-size: 14px;">[% "{{}}" %]</span>
 </div>
 """
+# ==============================================================================
+# SISTEMAS DE COORDENADAS (CRS)
+# ------------------------------------------------------------------------------
+# ¿Por qué usamos dos distintos?
+# 1. QGIS y PNOA (EPSG:25830): Nuestro mapa de España y las mallas trabajan en
+#    METROS. Es necesario para que el mapa sea plano y no se deformen las distancias.
+# 2. Internet / Nominatim (EPSG:4326): La API del buscador es global y siempre
+#    devuelve las coordenadas GPS en GRADOS (Latitud/Longitud).
+#
+# El código del buscador usa ambas para "traducir" el punto (grados) de internet
+# a la pantalla plana del proyecto (metros).
+# ==============================================================================
+
+# Usado para el mapa de QGIS, la ortofoto y la fusión de teselas (Mide en Metros)
 CRS_FUSION_TESELAS = "EPSG:25830"
 
+# Usado para interpretar los datos que llegan de la API del buscador (Mide en Grados)
+CRS_BUSCADOR_WGS84 = "EPSG:4326"
 # ============================================================================
 # 10. DIÁLOGO DE COBERTURA PNOA
 # ============================================================================
