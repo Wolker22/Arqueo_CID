@@ -105,7 +105,7 @@ from ....config import (
     ISOLATION_FOREST_MAX_SAMPLES,
 )
 from ..visor_derivados import VisorDerivados
-from ...core.predictor import (
+from ....core.core_postprocesado.predictor import (
     cargar_modelo_vae,
     leer_stack_multibanda,
     extraer_parches_generator,

@@ -34,8 +34,8 @@ from ..config import (
     COLOR_FONDO,
     COLOR_BORDE,
 )
-from .gui.dialogoConfiguracion import DialogoConfiguracion
-from .gui.dialogoProgreso import DialogoProgreso
+from ..gui.gui_preprocesado.dialogoConfiguracion import DialogoConfiguracion
+from ..gui.gui_preprocesado.dialogoProgreso import DialogoProgreso
 from .tasks.pipeline import TareaPipeline
 from ..utils.logging import get_logger
 from ..utils.entorno import verificar_todas_dependencias, es_entorno_valido, formatear_mensaje_dependencias

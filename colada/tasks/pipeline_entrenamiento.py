@@ -19,7 +19,7 @@ from qgis.core import QgsTask, Qgis, QgsApplication
 from qgis.utils import iface
 
 from ...utils.logging import get_logger
-from ..core.entrenador import entrenar_vae
+from ...core.core_postprocesado.entrenador import entrenar_vae
 from ...config import (
     VAE_IN_CHANNELS,
     VAE_LATENT_DIM,

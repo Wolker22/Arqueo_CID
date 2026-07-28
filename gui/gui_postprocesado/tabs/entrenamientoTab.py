@@ -102,9 +102,9 @@ from ....config import (
     USAR_GPU,
     NUM_WORKERS_DATALOADER,
 )
-from ...core.entrenador import entrenar_vae
+from ....core.core_postprocesado.entrenador import entrenar_vae
 from ..dialogoProgreso import ProgresoCOLADA
-from ...tasks.pipeline_entrenamiento import lanzar_entrenamiento
+from ....colada.tasks.pipeline_entrenamiento import lanzar_entrenamiento
 from ....utils.logging import get_logger
 
 logger = get_logger('Colada.gui.entrenamiento')

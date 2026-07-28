@@ -68,7 +68,7 @@ from ....config import (
     FILTROS_BOTON_SECUNDARIO_STYLE,
 )
 from ..visor_derivados import VisorDerivados
-from ...core.filtros_imagen import aplicar_filtro
+from ....core.core_postprocesado.filtros_imagen import aplicar_filtro
 from ....utils.logging import get_logger
 
 logger = get_logger('Colada.gui.filtros')

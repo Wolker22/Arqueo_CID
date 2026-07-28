@@ -32,9 +32,9 @@ from ...config import (
     MEMORIA_PAUSA_SEGUNDOS,
     ESPERA_ENTRE_COMPROBACIONES,
 )
-from ..core.descargador import DescargadorCNIG, archivo_coincide_tipo
+from ...core.core_preprocesado.descargador import DescargadorCNIG, archivo_coincide_tipo
 from ...utils.logging import get_logger
-from ..core.auxiliar import (
+from ...core.core_preprocesado.auxiliar import (
     procesar_tesela_worker,
     rmtree_robusto,
     verificar_espacio_disco,

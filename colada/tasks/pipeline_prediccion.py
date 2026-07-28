@@ -40,7 +40,7 @@ from qgis.PyQt.QtGui import QColor
 from qgis.utils import iface
 
 from ...utils.logging import get_logger
-from ..core.predictor import (
+from ...core.core_postprocesado.predictor import (
     cargar_modelo_vae,
     leer_stack_multibanda,
     extraer_parches_generator,

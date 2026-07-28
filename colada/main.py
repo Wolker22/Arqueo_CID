@@ -18,11 +18,11 @@ from qgis.core import QgsApplication, Qgis, QgsProject, QgsSettings
 from qgis.PyQt.QtWidgets import QDialog, QMessageBox
 
 from ..utils.logging import get_logger
-from .gui.dialogoPrincipal import DialogoPrincipal
-from .gui.dialogoProgreso import ProgresoCOLADA
+from ..gui.gui_postprocesado.dialogoPrincipal import DialogoPrincipal
+from ..gui.gui_postprocesado.dialogoProgreso import ProgresoCOLADA
 from .tasks.pipeline_prediccion import TareaPrediccion
 from .tasks.pipeline_entrenamiento import lanzar_entrenamiento
-from .core.tizona_integration import recolectar_stacks_por_tesela
+from ..core.core_postprocesado.tizona_integration import recolectar_stacks_por_tesela
 
 # Usar el logger 'Colada' (el mapeo lo dirigirá al logger principal 'Colada')
 logger = get_logger('Colada')

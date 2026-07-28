@@ -25,7 +25,7 @@ from ...config import (
     CARPETA_MDT, CARPETA_DERIVADOS, CARPETA_IMAGENES, CARPETA_STACKS
 )
 from ...utils.processing_config import ConfiguracionProcesamiento
-from ..core.procesador_lidar import ProcesadorLiDAR
+from .procesador_lidar import ProcesadorLiDAR
 from ...utils.logging import get_logger
 
 logger = get_logger('Tizona.auxiliar')
